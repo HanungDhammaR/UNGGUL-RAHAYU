@@ -3,13 +3,13 @@ import sqlite3
 
 app = Flask(__name__)
 
-# Fungsi untuk menghubungkan ke database
+
 def get_db_connection():
     conn = sqlite3.connect('toko.db')
-    conn.row_factory = sqlite3.Row # Agar data bisa diakses seperti dictionary
+    conn.row_factory = sqlite3.Row 
     return conn
 
-# Membuat tabel jika belum ada saat aplikasi pertama kali dijalankan
+
 def init_db():
     conn = get_db_connection()
     conn.execute('''
@@ -23,15 +23,14 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Inisialisasi Database
 init_db()
 
-# 1. Halaman Utama (Menampilkan file HTML)
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# 2. Mengambil Semua Data Barang (Read)
+
 @app.route('/api/produk', methods=['GET'])
 def get_produk():
     conn = get_db_connection()
@@ -39,7 +38,7 @@ def get_produk():
     conn.close()
     return jsonify([dict(p) for p in produk])
 
-# 3. Menambah Barang Baru (Create)
+
 @app.route('/api/produk', methods=['POST'])
 def add_produk():
     data = request.json
@@ -52,7 +51,7 @@ def add_produk():
     conn.close()
     return jsonify({"id": new_id, "pesan": "Berhasil ditambahkan!"})
 
-# 4. Mengubah Harga / Kuantitas (Update)
+
 @app.route('/api/produk/<int:id>', methods=['PUT'])
 def update_produk(id):
     data = request.json
@@ -63,7 +62,6 @@ def update_produk(id):
     conn.close()
     return jsonify({"pesan": "Berhasil diperbarui!"})
 
-# 5. Menghapus Barang (Delete)
 @app.route('/api/produk/<int:id>', methods=['DELETE'])
 def delete_produk(id):
     conn = get_db_connection()
@@ -73,5 +71,5 @@ def delete_produk(id):
     return jsonify({"pesan": "Berhasil dihapus!"})
 
 if __name__ == '__main__':
-    # Berjalan di mode debug agar gampang mendeteksi error
+   
     app.run(debug=True)
