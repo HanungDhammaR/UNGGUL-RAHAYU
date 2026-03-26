@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toko Pribadi UR</title>
+    <style>
+        /* CSS Sama seperti sebelumnya */
+        :root { --primary-green: #7D9C65; --dark-green: #3E5320; --bg-color: #F2F5ED; --white: #FFFFFF; --red-danger: #d9534f;}
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); margin: 0; padding: 40px; color: #333;}
+        .container { max-width: 950px; margin: 0 auto; background: var(--white); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden;}
+        .header { background-color: var(--primary-green); padding: 20px 30px; display: flex; justify-content: space-between; align-items: center;}
+        .logo-container img { height: 50px; width: auto; border-radius: 50%; background-color: #C8D8B6; padding: 5px;}
+        .search-bar { padding: 10px 15px; border-radius: 20px; border: none; width: 300px; outline: none;}
+        .btn-add { background-color: var(--dark-green); color: var(--white); border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;}
+        .content { padding: 30px; overflow-x: auto;}
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px;}
+        th, td { text-align: left; padding: 15px 10px; border-bottom: 1px solid #eee;}
+        .input-box { padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 100px; outline: none;}
+        .btn-delete { background-color: var(--red-danger); color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer;}
+        .footer { display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; background-color: #FAFCF7; border-top: 1px solid #eee;}
+        .total-text { font-size: 1.2em; font-weight: bold; color: var(--dark-green);}
+        .status-text { color: #7D9C65; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='logo2.1.png') }}" alt="Logo UR">
+        </div>
+        <input type="text" class="search-bar" id="searchInput" placeholder="Cari Produk..." onkeyup="searchProduct()">
+        <button class="btn-add" onclick="tambahProduk()">Tambah Produk Baru +</button>
+    </div>
+
+    <div class="content">
+        <table id="productTable">
+            <thead>
+                <tr>
+                    <th>No.</th>
+                    <th>Nama Barang</th>
+                    <th>Harga Satuan (Rp)</th>
+                    <th>Kuantitas</th>
+                    <th>Total Harga (Rp)</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <div class="total-text" id="grandTotal">Total Nilai Inventaris: Rp 0</div>
+        <div class="status-text" id="statusMessage">Semua data tersimpan ke Database!</div>
+    </div>
+</div>
+
+<script>
+    // URL API Backend kita
+    const API_URL = '/api/produk';
+
+    // Format Rupiah
+    function formatRupiah(angka) {
+        return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    // Fungsi untuk memuat data dari SQLite saat web dibuka
+    async function loadData() {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = ''; // Kosongkan tabel dulu
+        
+        let grandTotal = 0;
+
+        data.forEach((produk, index) => {
+            let rowTotal = produk.harga * produk.kuantitas;
+            grandTotal += rowTotal;
+
+            tbody.innerHTML += `
+                <tr data-id="${produk.id}">
+                    <td class="row-number">${index + 1}</td>
+                    <td class="product-name">${produk.nama_barang}</td>
+                    <td><input type="number" class="input-box price" value="${produk.harga}" onchange="updateProduk(${produk.id}, this)"></td>
+                    <td><input type="number" class="input-box qty" value="${produk.kuantitas}" onchange="updateProduk(${produk.id}, this)"></td>
+                    <td class="row-total">${formatRupiah(rowTotal)}</td>
+                    <td><button class="btn-delete" onclick="hapusProduk(${produk.id})">Hapus</button></td>
+                </tr>
+            `;
+        });
+
+        document.getElementById("grandTotal").innerText = "Total Nilai Inventaris: Rp " + formatRupiah(grandTotal);
+    }
+
+    // Fungsi Tambah Produk ke Database
+    async function tambahProduk() {
+        let namaBarang = prompt("Masukkan Nama Barang Baru:");
+        if (namaBarang !== null && namaBarang.trim() !== "") {
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nama_barang: namaBarang })
+            });
+            loadData(); // Muat ulang tabel
+            tampilkanStatus("Produk baru berhasil ditambahkan!");
+        }
+    }
+
+    // Fungsi Update Harga / Kuantitas (otomatis simpan saat diketik)
+    async function updateProduk(id, elemen) {
+        let tr = elemen.closest('tr');
+        let harga = tr.querySelector('.price').value;
+        let kuantitas = tr.querySelector('.qty').value;
+
+        await fetch(`${API_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ harga: parseInt(harga), kuantitas: parseInt(kuantitas) })
+        });
+        
+        loadData(); // Perbarui perhitungan total
+        tampilkanStatus("Perubahan berhasil disimpan!");
+    }
+
+    // Fungsi Hapus Produk dari Database
+    async function hapusProduk(id) {
+        if(confirm("Apakah Anda yakin ingin menghapus barang ini?")) {
+            await fetch(`${API_URL}/${id}`, {
+                method: 'DELETE'
+            });
+            loadData(); // Muat ulang tabel
+            tampilkanStatus("Produk berhasil dihapus!");
+        }
+    }
+
+    // Fitur Pencarian (Sisi Klien)
+    function searchProduct() {
+        let input = document.getElementById("searchInput").value.toLowerCase();
+        let rows = document.querySelectorAll("#tableBody tr");
+
+        rows.forEach(row => {
+            let productName = row.querySelector(".product-name").innerText.toLowerCase();
+            row.style.display = productName.includes(input) ? "" : "none";
+        });
+    }
+
+    // Tampilkan notifikasi kecil di sudut kanan bawah
+    function tampilkanStatus(pesan) {
+        let statusDiv = document.getElementById("statusMessage");
+        statusDiv.innerText = pesan;
+        statusDiv.style.color = "#d9534f";
+        setTimeout(() => {
+            statusDiv.innerText = "Semua data tersimpan ke Database!";
+            statusDiv.style.color = "#7D9C65";
+        }, 3000);
+    }
+
+    // Muat data pertama kali web dibuka
+    window.onload = loadData;
+</script>
+
+</body>
+</html>
