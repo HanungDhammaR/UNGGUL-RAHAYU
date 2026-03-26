@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Toko Pribadi UR</title>
     <style>
-        /* CSS Sama seperti sebelumnya */
+       
         :root { --primary-green: #7D9C65; --dark-green: #3E5320; --bg-color: #F2F5ED; --white: #FFFFFF; --red-danger: #d9534f;}
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); margin: 0; padding: 40px; color: #333;}
         .container { max-width: 950px; margin: 0 auto; background: var(--white); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden;}
@@ -21,6 +21,38 @@
         .footer { display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; background-color: #FAFCF7; border-top: 1px solid #eee;}
         .total-text { font-size: 1.2em; font-weight: bold; color: var(--dark-green);}
         .status-text { color: #7D9C65; font-style: italic; }
+       
+        @media (max-width: 768px) {
+            body {
+                padding: 10px; /* Mengurangi jarak kosong di pinggir layar HP */
+            }
+            .header {
+                flex-direction: column; /* Menyusun logo, pencarian, dan tombol ke bawah */
+                gap: 15px; /* Memberi jarak antar elemen */
+            }
+            .search-bar {
+                width: 100%; /* Kotak pencarian menyesuaikan lebar layar */
+                box-sizing: border-box;
+            }
+            .btn-add {
+                width: 100%; /* Tombol tambah produk memanjang penuh */
+            }
+            .content {
+                padding: 15px; 
+            }
+            /* Karena tabel susah dikecilkan, kita buat tabelnya bisa digeser ke kanan-kiri (scroll horizontal) di layar HP */
+            .input-box {
+                width: 70px; /* Sedikit memperkecil kotak input angka */
+            }
+            .footer {
+                flex-direction: column; /* Menyusun total dan notifikasi ke bawah */
+                gap: 15px;
+                text-align: center;
+            }
+            .total-text {
+                font-size: 1.1em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -58,13 +90,23 @@
 </div>
 
 <script>
-    // URL API Backend kita
+    // URL API Backend 
     const API_URL = '/api/produk';
 
     // Format Rupiah
     function formatRupiah(angka) {
         return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
+
+    function formatInput(elemen) {
+        let angka = elemen.value.replace(/[^0-9]/g, ''); // Hapus semua selain angka
+        if(angka !== "") {
+            elemen.value = formatRupiah(parseInt(angka));
+        } else {
+            elemen.value = "0";
+        }
+    }
+
 
     // Fungsi untuk memuat data dari SQLite saat web dibuka
     async function loadData() {
@@ -83,8 +125,8 @@
                 <tr data-id="${produk.id}">
                     <td class="row-number">${index + 1}</td>
                     <td class="product-name">${produk.nama_barang}</td>
-                    <td><input type="number" class="input-box price" value="${produk.harga}" onchange="updateProduk(${produk.id}, this)"></td>
-                    <td><input type="number" class="input-box qty" value="${produk.kuantitas}" onchange="updateProduk(${produk.id}, this)"></td>
+                   <td><input type="text" class="input-box price" value="${formatRupiah(produk.harga)}" oninput="formatInput(this)" onchange="updateProduk(${produk.id}, this)"></td>
+                    <td><input type="text" class="input-box qty" value="${formatRupiah(produk.kuantitas)}" oninput="formatInput(this)" onchange="updateProduk(${produk.id}, this)"></td>
                     <td class="row-total">${formatRupiah(rowTotal)}</td>
                     <td><button class="btn-delete" onclick="hapusProduk(${produk.id})">Hapus</button></td>
                 </tr>
@@ -111,10 +153,9 @@
     // Fungsi Update Harga / Kuantitas (otomatis simpan saat diketik)
     async function updateProduk(id, elemen) {
         let tr = elemen.closest('tr');
-        let harga = tr.querySelector('.price').value;
-        let kuantitas = tr.querySelector('.qty').value;
-
-        await fetch(`${API_URL}/${id}`, {
+        let harga = tr.querySelector('.price').value.replace(/\./g, '');
+        let kuantitas = tr.querySelector('.qty').value.replace(/\./g, '');
+            await fetch(`${API_URL}/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ harga: parseInt(harga), kuantitas: parseInt(kuantitas) })
@@ -135,7 +176,7 @@
         }
     }
 
-    // Fitur Pencarian (Sisi Klien)
+    // Fitur Pencarian 
     function searchProduct() {
         let input = document.getElementById("searchInput").value.toLowerCase();
         let rows = document.querySelectorAll("#tableBody tr");
